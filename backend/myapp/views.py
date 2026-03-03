@@ -6,11 +6,13 @@ from django.contrib.auth import authenticate, login, logout
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from django.http import FileResponse, Http404
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.utils import timezone
+from django.utils.timezone import now
+from django.core.files.storage import default_storage
 from datetime import timedelta
 from .models import CustomUser, FileStorage
 from .serializers import (
@@ -22,7 +24,10 @@ import uuid
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.conf import settings
 from rest_framework.renderers import JSONRenderer
+import mimetypes
+import logging
 
+logger = logging.getLogger(__name__)
 
 class IsOwnerOrAdmin(BasePermission):
     def has_permission(self, request, view):
@@ -79,7 +84,7 @@ class LoginView(APIView):
         response['X-CSRFToken'] = request.META.get('CSRF_COOKIE', '')
         return response
 
-    # @method_decorator(csrf_protect)
+    @method_decorator(csrf_protect)
     def post(self, request):
         try:
             serializer = LoginSerializer(data=request.data)
@@ -98,7 +103,7 @@ class LoginView(APIView):
                 'error': 'Неверное имя пользователя или пароль'
             }, status=status.HTTP_401_UNAUTHORIZED)
         except Exception as e:
-            print(f"Ошибка при авторизации: {str(e)}")
+            logger.error(f"Ошибка при авторизации: {str(e)}")
             return Response({
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -112,10 +117,12 @@ def logout_view(request):
         logout(request)
         return Response({'message': 'Успешный выход из системы'})
     except Exception as e:
+        logger.info(f"Успешный выход из системы: {str(e)}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class IsAdminUser(BasePermission):
+
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated and request.user.is_admin
 
@@ -131,9 +138,9 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         except Exception as e:
-            print(f"Ошибка при получении списка пользователей: {str(e)}")
+            logger.error(f"Ошибка при получении списка пользователей: {str(e)}")
             return Response(
-                {'error': f'Ошибка при получении пользователей: {str(e)}'},
+                {'error': f'Ошибка при получении списка пользователей: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -143,7 +150,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(user)
             return Response(serializer.data)
         except Exception as e:
-            print(f"Ошибка при получении пользователя {pk}: {str(e)}")
+            logger.error(f"Ошибка при получении пользователя {pk}: {str(e)}")
             return Response(
                 {'error': f'Ошибка при получении пользователя: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -157,7 +164,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             user.save()
             return Response({'status': 'success', 'is_admin': user.is_admin})
         except Exception as e:
-            print(f"Ошибка при изменении прав администратора для пользователя {pk}: {str(e)}")
+            logger.error(f"Ошибка при изменении прав администратора для пользователя {pk}: {str(e)}")
             return Response(
                 {'error': f'Ошибка при изменении прав администратора: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -169,7 +176,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             user = self.get_object()
             return Response(user.get_storage_info())
         except Exception as e:
-            print(f"Ошибка при получении информации о хранилище пользователя {pk}: {str(e)}")
+            logger.error(f"Ошибка при получении информации о хранилище пользователя {pk}: {str(e)}")
             return Response(
                 {'error': f'Ошибка при получении информации о хранилище: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -250,20 +257,31 @@ class FileDetailView(APIView):
         file_storage.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
 class FileDownloadView(APIView):
-    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self, pk):
-        return FileStorage.objects.get(pk=pk)
+        return get_object_or_404(FileStorage, pk=pk)
 
     def get(self, request, pk):
         file_storage = self.get_object(pk)
         file_storage.update_last_download()
-        response = FileResponse(file_storage.file, as_attachment=True)
-        response['Content-Disposition'] = f'attachment; filename="{file_storage.original_name}"'
-        return response
-
+        
+        # Проверяем наличие параметра preview
+        is_preview = request.query_params.get('preview', None)
+        
+        # Готовим файл для отправки
+        full_path = file_storage.file.path
+        content_type, _ = mimetypes.guess_type(full_path)
+        
+        if is_preview:
+            # Вернуть файл для просмотра в браузере
+            return FileResponse(open(full_path, 'rb'), content_type=content_type)
+        else:
+            # Вернуть файл для скачивания
+            response = FileResponse(open(full_path, 'rb'), content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{file_storage.original_name}"'
+            return response
 
 class FileShareView(APIView):
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]

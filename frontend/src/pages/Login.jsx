@@ -15,6 +15,31 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [csrfToken, setCsrfToken] = useState('');
 
+  // Валидаторы
+  const validateUsername = (value) => {
+    if (!/^[a-zA-Z][a-zA-Z0-9]{3,19}$/.test(value)) {
+      return 'Логин должен содержать от 4 до 20 символов, начинаться с буквы и содержать только латинские буквы и цифры.';
+    }
+    return '';
+  };
+
+  const validatePassword = (value) => {
+    if (value.length < 6) {
+      return 'Пароль должен содержать не менее 6 символов.';
+    }
+    if (!/[A-Z]/.test(value)) {
+      return 'Пароль должен содержать хотя бы одну заглавную букву.';
+    }
+    if (!/\d/.test(value)) {
+      return 'Пароль должен содержать хотя бы одну цифру.';
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+      return 'Пароль должен содержать хотя бы один специальный символ (!@#$%^&*(),.?":{}|<>).';
+    }
+    return '';
+  };
+
+
   // Получаем CSRF-токен при загрузке компонента
   useEffect(() => {
     const fetchCsrfToken = async () => {
@@ -39,14 +64,26 @@ const Login = () => {
       ...prev,
       [name]: value
     }));
-    // Очищаем ошибку поля при изменении
-    if (error[name]) {
-      setError(prev => ({
-        ...prev,
-        [name]: ""
-      }));
+
+    // Проверка валидатора для соответствующего поля
+    switch (name) {
+      case 'username':
+        setError((prev) => ({
+          ...prev,
+          username: validateUsername(value)
+        }));
+        break;
+      case 'password':
+        setError((prev) => ({
+          ...prev,
+          password: validatePassword(value)
+        }));
+        break;
+      default:
+        break;
     }
   };
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,7 +107,7 @@ const Login = () => {
           'Content-Type': 'application/json',
           'X-CSRFToken': currentToken,
         },
-        body: JSON.stringify({ username: formData.username, password: formData.password })
+        body: JSON.stringify(formData)
       });
 
       if (response.status === 403) {

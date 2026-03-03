@@ -160,22 +160,22 @@ WSGI_APPLICATION = 'cloud.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'cloudstorage',
-        'USER': 'new_user_name',
-        'PASSWORD': 'new_password',
-        'HOST': 'localhost',
-        'PORT': '',
-    },
-     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'cloudstorage',
-        'USER': 'lexus',
-        'PASSWORD': 'Leschiy885',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    },
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.postgresql_psycopg2',
+    #     'NAME': 'cloudstorage',
+    #     'USER': 'new_user_name',
+    #     'PASSWORD': 'new_password',
+    #     'HOST': 'localhost',
+    #     'PORT': '',
+    # },
+    #  'default': {
+    #     'ENGINE': 'django.db.backends.postgresql',
+    #     'NAME': 'cloudstorage',
+    #     'USER': 'lexus',
+    #     'PASSWORD': 'Leschiy885',
+    #     'HOST': 'localhost',
+    #     'PORT': '5432',
+    # },
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'cloudstorage',
@@ -260,3 +260,25 @@ CORS_EXPOSE_HEADERS = [
     "Content-Type",
     "X-CSRFToken",
 ]
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'propagate': True,
+            'level': 'INFO',
+        },
+        'myapp': { 
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        }
+    }
+}

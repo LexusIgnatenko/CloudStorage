@@ -15,9 +15,6 @@ const API_URL = `${import.meta.env.VITE_SERVER_URL}/api`;
 const getBaseUrl = () => {
   return import.meta.env.VITE_SERVER_URL;
 };
-// const baseURL = getBaseUrl();
-// console.log(baseURL); // Или используем иначе
-
 
 const getHeaders = () => {
   const csrfToken = document.cookie.split('; ')

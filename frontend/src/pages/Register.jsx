@@ -3,6 +3,43 @@ import { useNavigate, Link } from "react-router-dom";
 import './Register.css';
 import './auth.css';
 
+// Валидаторы
+const validateUsername = (value) => {
+  if (!/^[a-zA-Z][a-zA-Z0-9]{3,19}$/.test(value)) {
+    return "Логин должен содержать от 4 до 20 символов, начинаться с буквы и содержать только латинские буквы и цифры.";
+  }
+  return null;
+};
+
+const validatePassword = (value) => {
+  let errors = [];
+
+  if (value.length < 6) {
+    errors.push("Пароль должен содержать не менее 6 символов.");
+  }
+
+  if (!/[A-Z]/.test(value)) {
+    errors.push("Пароль должен содержать хотя бы одну заглавную букву.");
+  }
+
+  if (!/\d/.test(value)) {
+    errors.push("Пароль должен содержать хотя бы одну цифру.");
+  }
+
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+    errors.push("Пароль должен содержать хотя бы один специальный символ (!@#$%^&*(),.?\":{}|<>).");
+  }
+
+  return errors.length > 0 ? errors.join("\n") : null;
+};
+
+const validateEmail = (value) => {
+  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
+    return "Введите корректный email адрес.";
+  }
+  return null;
+};
+
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -16,49 +53,50 @@ const Register = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Очищаем ошибку поля при изменении
-    if (error[name]) {
-      setError(prev => ({
-        ...prev,
-        [name]: ""
-      }));
-    }
-    
-    // Проверка совпадения паролей при изменении
-    if (name === 'password' || name === 'password_confirm') {
-      const password = name === 'password' ? value : formData.password;
-      const passwordConfirm = name === 'password_confirm' ? value : formData.password_confirm;
-      
-      if (password && passwordConfirm && password !== passwordConfirm) {
-        setError(prev => ({
-          ...prev,
-          password_confirm: "Пароли не совпадают"
-        }));
-      } else if (password && passwordConfirm && password === passwordConfirm) {
-        setError(prev => ({
-          ...prev,
-          password_confirm: ""
-        }));
-      }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    switch (name) {
+      case 'username':
+        setError((prev) => ({ ...prev, username: validateUsername(value) }));
+        break;
+      case 'email':
+        setError((prev) => ({ ...prev, email: validateEmail(value) }));
+        break;
+      case 'password':
+        setError((prev) => ({ ...prev, password: validatePassword(value) }));
+        break;
+      case 'password_confirm':
+        if (value !== formData.password) {
+          setError((prev) => ({ ...prev, password_confirm: "Пароли не совпадают." }));
+        } else {
+          setError((prev) => ({ ...prev, password_confirm: "" }));
+        }
+        break;
+      default:
+        break;
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Проверка совпадения паролей перед отправкой
-    if (formData.password !== formData.password_confirm) {
-      setError(prev => ({
-        ...prev,
-        password_confirm: "Пароли не совпадают"
-      }));
+
+    const usernameErr = validateUsername(formData.username);
+    const emailErr = validateEmail(formData.email);
+    const passwordErr = validatePassword(formData.password);
+    const passConfirmErr = formData.password !== formData.password_confirm ?
+      "Пароли не совпадают." :
+      "";
+
+    if (usernameErr || emailErr || passwordErr || passConfirmErr) {
+      setError({
+        username: usernameErr,
+        email: emailErr,
+        password: passwordErr,
+        password_confirm: passConfirmErr
+      });
       return;
     }
-    
+
     setError({});
     setLoading(true);
 
@@ -127,14 +165,14 @@ const Register = () => {
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="username">Логин:</label>
-          <input 
-            type="text" 
+          <input
+            type="text"
             id="username"
-            name="username" 
-            value={formData.username} 
-            onChange={handleChange} 
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
             className={error.username ? "error-input" : ""}
-            required 
+            required
           />
           {error.username && (
             <div className="error-message">{error.username}</div>
@@ -142,14 +180,14 @@ const Register = () => {
         </div>
         <div className="form-group">
           <label htmlFor="email">Email:</label>
-          <input 
-            type="email" 
+          <input
+            type="email"
             id="email"
-            name="email" 
-            value={formData.email} 
-            onChange={handleChange} 
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
             className={error.email ? "error-input" : ""}
-            required 
+            required
           />
           {error.email && (
             <div className="error-message">{error.email}</div>
@@ -157,14 +195,14 @@ const Register = () => {
         </div>
         <div className="form-group">
           <label htmlFor="password">Пароль:</label>
-          <input 
-            type="password" 
+          <input
+            type="password"
             id="password"
-            name="password" 
-            value={formData.password} 
-            onChange={handleChange} 
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
             className={error.password ? "error-input" : ""}
-            required 
+            required
           />
           {error.password && (
             <div className="error-message">{error.password}</div>
@@ -172,14 +210,14 @@ const Register = () => {
         </div>
         <div className="form-group">
           <label htmlFor="password_confirm">Подтверждение пароля:</label>
-          <input 
-            type="password" 
+          <input
+            type="password"
             id="password_confirm"
-            name="password_confirm" 
-            value={formData.password_confirm} 
-            onChange={handleChange} 
+            name="password_confirm"
+            value={formData.password_confirm}
+            onChange={handleChange}
             className={error.password_confirm ? "error-input" : ""}
-            required 
+            required
           />
           {error.password_confirm && (
             <div className="error-message">{error.password_confirm}</div>
@@ -200,4 +238,3 @@ const Register = () => {
 };
 
 export default Register;
-  
