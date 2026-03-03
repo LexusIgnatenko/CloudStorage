@@ -107,7 +107,7 @@ server {
     proxy_pass http://unix:/Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/cloud/project.sock;
   }
   location /static/ {
-    alias /Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/staticfiles/;
+    alias /Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/static/;
   }
   location /storage/ {
     alias /Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/storage/;
