@@ -76,10 +76,10 @@ sudo nano /etc/systemd/system/gunicorn.service
 Description=gunicorn service
 After=network.target
 [Service]
-User=your_user
+User=lexus
 Group=www-data
 WorkingDirectory=/Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend
-ExecStart=/path/to/CloudStorage/backend/env/bin/gunicorn --access-logfile -\
+ExecStart=/Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/env/bin/gunicorn --access-logfile -\
          --workers=3 \
          --bind C:/Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/cloud/project.sock cloud.wsgi:application
 [Install]
@@ -126,7 +126,7 @@ server {
 sudo systemctl start gunicorn
 sudo systemctl enable gunicorn
 
-sydo systemctl start nginx
+sudo systemctl start nginx
 
 sudo ufw allow 'Nginx Full'
 ```
