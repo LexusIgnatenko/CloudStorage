@@ -78,10 +78,10 @@ After=network.target
 [Service]
 User=lexus
 Group=www-data
-WorkingDirectory=/Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend
-ExecStart=/Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/env/bin/gunicorn --access-logfile -\
+WorkingDirectory=/Users/lexus/CloudStorage/backend
+ExecStart=/Users/lexus/CloudStorage/backend/env/bin/gunicorn --access-logfile -\
          --workers=3 \
-         --bind C:/Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/cloud/project.sock cloud.wsgi:application
+         --bind C:/Users/lexus/CloudStorage/backend/cloud/project.sock cloud.wsgi:application
 [Install]
 WantedBy=multi-user.target
 ```
@@ -89,7 +89,7 @@ WantedBy=multi-user.target
 ## 6. Настройка Nginx
 ```bash
 # Создаём файл для nginx
-sudo nano ../../etc/nginx/sites-enabled/your_project_name
+sudo nano /etc/nginx/sites-enabled/your_project_name
 
 server {
   listen 80;
@@ -104,17 +104,17 @@ server {
   listen 8000;
   server_name 130.49.150.245;
   location / {
-    proxy_pass http://unix:/Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/cloud/project.sock;
+    proxy_pass http://unix:/Users/lexus/CloudStorage/backend/cloud/project.sock;
   }
   location /static/ {
-    alias /Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/static/;
+    alias /Users/lexus/CloudStorage/backend/static/;
   }
   location /storage/ {
-    alias /Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/storage/;
+    alias /Users/lexus/CloudStorage/backend/storage/;
     internal;
   }
   location /media/ {
-    alias /Users/lexus/OneDrive/Desktop/Python/CloudStorage/backend/media/;
+    alias /Users/lexus/CloudStorage/backend/media/;
     expires 7d;
     internal;
   }

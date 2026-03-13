@@ -187,7 +187,7 @@ DATABASES = {
         'USER':  os.getenv('DB_USER'),
         'PASSWORD':  os.getenv('DB_PASSWORD'),
         'HOST':  os.getenv('DB_HOST'),
-        'PORT':  os.getenv('DB_NAME'),
+        'PORT':  os.getenv('DB_PORT'),
     }
 }
 
