@@ -68,9 +68,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "http://130.49.150.245",
-    "http://130.49.150.245:8000",
-    "http://130.49.150.245:5173",
+    "http://194.67.66.92",
+    "http://194.67.66.92:8000",
 ]
 
 CORS_ALLOW_METHODS = [
@@ -100,9 +99,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "http://130.49.150.245",
-    "http://130.49.150.245:8000",
-    "http://130.49.150.245:5173",
+    "http://194.67.66.92",
+    "http://194.67.66.92:8000",
 ]
 
 # Дополнительные настройки безопасности
@@ -140,6 +138,8 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1209600  # 2 недели в секундах
 SESSION_COOKIE_NAME = 'sessionid'
 
+WSGI_APPLICATION = 'cloud.wsgi.application'
+
 ROOT_URLCONF = 'cloud.urls'
 
 TEMPLATES = [
@@ -157,9 +157,6 @@ TEMPLATES = [
         },
     },
 ]
-
-WSGI_APPLICATION = 'cloud.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
@@ -227,13 +224,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = '/static/'
-# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
-# STATICFILES_DIRS = [
-#     os.path.join(BASE_DIR, 'myapp/static'),
-# ]
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'myapp/static'),
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -258,7 +254,7 @@ for directory in STORAGE_DIRS:
         os.makedirs(directory)
 
 # Настройки для загрузки файлов
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 FILE_UPLOAD_PERMISSIONS = 0o644
 
 # CORS Settings

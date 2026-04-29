@@ -71,17 +71,19 @@ npm run build
 # Создаем файл gunicorn.service с содержимым
 sudo nano /etc/systemd/system/gunicorn.service
 
-
 [Unit]
 Description=gunicorn service
 After=network.target
 [Service]
 User=lexus
 Group=www-data
-WorkingDirectory=/Users/lexus/CloudStorage/backend
-ExecStart=/Users/lexus/CloudStorage/backend/env/bin/gunicorn --access-logfile -\
-         --workers=3 \
-         --bind C:/Users/lexus/CloudStorage/backend/cloud/project.sock cloud.wsgi:application
+WorkingDirectory=/home/lexus/CloudStorage/backend
+ExecStart=/home/lexus/CloudStorage/backend/env/bin/gunicorn \
+         --access-logfile -\
+         --workers 3 \
+         --timeout 120 \
+         --bind unix:/home/lexus/CloudStorage/backend/cloud/project.sock cloud.wsgi:application
+Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 ```
@@ -89,37 +91,48 @@ WantedBy=multi-user.target
 ## 6. Настройка Nginx
 ```bash
 # Создаём файл для nginx
-sudo nano /etc/nginx/sites-enabled/your_project_name
+sudo nano /etc/nginx/sites-available/cloud
 
+# Основной сервер (порт 80)
 server {
   listen 80;
-  server_name 130.49.150.245;
-  root /Users/lexus/OneDrive/Desktop/Python/CloudStorage/frontend/dist/;
+  server_name 194.67.66.92;
+  root /home/lexus/CloudStorage/frontend/dist/;
   index index.html;
+
+  # Обработка основного маршрута
   location / {
     try_files $uri $uri/ /index.html;
+    include proxy_params;
+    proxy_pass http://unix:/home/lexus/CloudStorage/backend/cloud/project.sock;
   }
 }
+
+# Сервер на порте 8000
 server {
   listen 8000;
-  server_name 130.49.150.245;
+  server_name 194.67.66.92;
+
   location / {
-    proxy_pass http://unix:/Users/lexus/CloudStorage/backend/cloud/project.sock;
+    include proxy_params;
+    proxy_pass http://unix:/home/lexus/CloudStorage/backend/cloud/project.sock;
   }
+
   location /static/ {
-    alias /Users/lexus/CloudStorage/backend/static/;
+    alias /home/lexus/CloudStorage/backend/staticfiles/;
+    expires 30d;
   }
+
   location /storage/ {
-    alias /Users/lexus/CloudStorage/backend/storage/;
-    internal;
+    alias /home/lexus/CloudStorage/backend/storage/;
   }
+
   location /media/ {
-    alias /Users/lexus/CloudStorage/backend/media/;
+    alias /home/lexus/CloudStorage/backend/media/;
     expires 7d;
-    internal;
   }
 }
-```
+
 
 ### 7. Запуск приложения
 ```bash

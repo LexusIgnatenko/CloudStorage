@@ -29,6 +29,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def index(request):
+    return render(request, 'index.html')
+
 class IsOwnerOrAdmin(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated)
