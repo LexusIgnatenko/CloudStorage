@@ -1,66 +1,66 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
+import {
+  setSelectedFile,
+  setComment,
+  setIsUploading,
+  updateAppError,
+  resetForm,
+} from '../../features/fileUploadSlice'; // путь к вашему slice
 import './FileUpload.css';
 
-// Максимальный размер файла - 10 МБ (в байтах)
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const FileUpload = ({ onUpload }) => {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [comment, setComment] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState('');
+  const dispatch = useDispatch();
   const fileInputRef = useRef(null);
+
+  const {
+    selectedFile,
+    comment,
+    isUploading,
+    error,
+  } = useSelector((state) => state.fileUpload);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Проверка размера файла
       if (file.size > MAX_FILE_SIZE) {
-        setError(`Размер файла не должен превышать 10 МБ. Текущий размер: ${(file.size / (10 * 1024 * 1024)).toFixed(2)} МБ`);
-        setSelectedFile(null);
-        // Очищаем поле для возможности повторного выбора того же файла
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
+        dispatch(setError(`Размер файла не должен превышать 10 МБ. Текущий размер: ${(file.size / (1024 * 1024)).toFixed(2)} МБ`));
+        dispatch(setSelectedFile(null));
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
-      
-      setSelectedFile(file);
-      setError('');
+      dispatch(setSelectedFile(file));
+      dispatch(updateAppError(''));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedFile) {
-      setError('Пожалуйста, выберите файл');
+      dispatch(updateAppError('Пожалуйста, выберите файл'));
       return;
     }
-
-    // Повторная проверка размера файла перед отправкой
     if (selectedFile.size > MAX_FILE_SIZE) {
-      setError(`Размер файла не должен превышать 10 МБ. Текущий размер: ${(selectedFile.size / (10 * 1024 * 1024)).toFixed(2)} МБ`);
+      dispatch(updateAppError(`Размер файла не должен превышать 10 МБ. Текущий размер: ${(selectedFile.size / (1024 * 1024)).toFixed(2)} МБ`));
       return;
     }
 
-    setIsUploading(true);
-    setError('');
+    dispatch(setIsUploading(true));
+    dispatch(updateAppError(''));
 
     try {
       await onUpload(selectedFile, comment);
-      setSelectedFile(null);
-      setComment('');
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      dispatch(resetForm());
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
-      setError(err.message || 'Ошибка при загрузке файла');
+      dispatch(updateAppError(err.message || 'Ошибка при загрузке файла'));
     } finally {
-      setIsUploading(false);
+      dispatch(setIsUploading(false));
     }
   };
-
   return (
     <div className="file-upload">
       <h3>Загрузка нового файла</h3>
@@ -78,18 +78,15 @@ const FileUpload = ({ onUpload }) => {
             {selectedFile ? selectedFile.name : 'Выберите файл'}
           </label>
         </div>
-
         <div className="comment-input">
           <textarea
             value={comment}
-            onChange={(e) => setComment(e.target.value)}
+            onChange={(e) => dispatch(setComment(e.target.value))}
             placeholder="Добавьте комментарий к файлу (необязательно)"
             rows="3"
           />
         </div>
-
         {error && <div className="upload-error">{error}</div>}
-
         <button
           type="submit"
           className="upload-button"
@@ -103,7 +100,7 @@ const FileUpload = ({ onUpload }) => {
 };
 
 FileUpload.propTypes = {
-  onUpload: PropTypes.func.isRequired
+  onUpload: PropTypes.func.isRequired,
 };
 
-export default FileUpload; 
+export default FileUpload;

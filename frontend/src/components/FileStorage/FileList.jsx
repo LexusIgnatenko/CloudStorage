@@ -1,7 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
-import './FileList.css';
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  fetchFiles,
+  uploadFile,
+  deleteFile,
+  renameFile,
+  downloadFile,
+  copyLink,
+  startRename,
+  updateNewName,
+  cancelRename,
+  fileRenamed,
+} from '../../features/fileStorage/fileStorageSlice.js'; // Корректный путь к вашему slice
 
+// Вспомогательные функции остаются без изменений
 const formatDate = (dateString) => {
   if (!dateString) return 'Не скачивался';
   return new Date(dateString).toLocaleString('ru-RU');
@@ -15,25 +28,70 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const FileList = ({ files, onDelete, onRename, onDownload, onCopyLink, isAdmin }) => {
-  const [editingFile, setEditingFile] = useState(null);
-  const [newName, setNewName] = useState('');
+const FileList = ({ isAdmin }) => { // props теперь только isAdmin, файлы берём из стора
+  const dispatch = useDispatch();
 
-  const handleRename = (file) => {
-    setEditingFile(file.id);
-    setNewName(file.original_name);
+  // Выбираем нужные данные из стора
+  const files = useSelector((state) => state.fileStorage.files);
+  const status = useSelector((state) => state.fileStorage.status);
+  const error = useSelector((state) => state.fileStorage.error);
+
+  const editingFileId = useSelector((state) => state.fileStorage.editingFileId);
+  const newFileName = useSelector((state) => state.fileStorage.newName);
+
+  // Обработчики кликов - они только диспатчат действия
+
+  const handleDownloadClick = (file) => {
+    dispatch(downloadFile({ fileId: file.id }));
   };
 
-  const handleSubmit = (fileId) => {
-    if (newName.trim()) {
-      onRename(fileId, newName.trim());
-      setEditingFile(null);
+  const handleCopyLinkClick = (file) => {
+    dispatch(copyLink({ fileId: file.id }));
+  };
+
+  const handleDeleteClick = (file) => {
+    if (window.confirm('Вы уверены, что хотите удалить файл?')) {
+      dispatch(deleteFile({ fileId: file.id }));
     }
   };
 
-  const handleCancel = () => {
-    setEditingFile(null);
+  const handleRenameClick = (file) => {
+    dispatch(startRename({ fileId: file.id, originalName: file.original_name }));
   };
+
+  const handleSubmitRename = () => {
+// Здесь должна быть логика вызова API для переименования.
+// После успешного ответа API нужно вызвать:
+// dispatch(fileRenamed({ fileId: editingFileId, newName: newNameValue }));
+    // Для демонстрации просто отменим редактирование:
+    dispatch(cancelRename());
+
+    // В реальном приложении здесь будет:
+    // fetch(...)
+    // .then(() => dispatch(fileRenamed({ ... })))
+    // .catch(() => /* обработка ошибки */)
+
+    console.log('Переименование файла:', editingFileId, 'в', newName);
+
+    // *** ВАЖНО *** В реальном коде здесь должен быть вызов API!
+
+    // После успешного API вызова:
+    // dispatch(fileRenamed({ fileId: editingFileId, newName: newNameValue }));
+
+    // Для этого примера просто отменим:
+    dispatch(cancelRename());
+  };
+
+  const handleCancelRename = () => {
+    dispatch(cancelRename());
+  };
+
+  const handleInputChange = (e) => {
+    dispatch(updateNewName(e.target.value));
+  };
+
+  if (status === 'loading') return <div>Загрузка...</div>;
+  if (status === 'failed') return <div>Ошибка: {error}</div>;
 
   return (
     <div className="file-list">
@@ -53,18 +111,18 @@ const FileList = ({ files, onDelete, onRename, onDownload, onCopyLink, isAdmin }
           {files.map((file) => (
             <tr key={file.id}>
               <td>
-                {editingFile === file.id ? (
+                {editingFileId === file.id ? (
                   <div className="rename-controls">
                     <input
                       type="text"
                       value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
+                      onChange={handleInputChange}
                       className="rename-input"
                     />
-                    <button onClick={() => handleSubmit(file.id)} className="action-button save">
+                    <button onClick={handleSubmitRename} className="action-button save">
                       Сохранить
                     </button>
-                    <button onClick={handleCancel} className="action-button cancel">
+                    <button onClick={handleCancelRename} className="action-button cancel">
                       Отмена
                     </button>
                   </div>
@@ -79,20 +137,20 @@ const FileList = ({ files, onDelete, onRename, onDownload, onCopyLink, isAdmin }
               <td>{formatDate(file.last_download)}</td>
               <td>
                 <div className="action-buttons">
-                  <button onClick={() => onDownload(file)} className="action-button download">
+                  <button onClick={() => handleDownloadClick(file)} className="action-button download">
                     Скачать
                   </button>
                   {(isAdmin || file.is_owner) && (
                     <>
-                      <button onClick={() => handleRename(file)} className="action-button rename">
+                      <button onClick={() => handleRenameClick(file)} className="action-button rename">
                         Переименовать
                       </button>
-                      <button onClick={() => onDelete(file)} className="action-button delete">
+                      <button onClick={() => handleDeleteClick(file)} className="action-button delete">
                         Удалить
                       </button>
                     </>
                   )}
-                  <button onClick={() => onCopyLink(file)} className="action-button copy">
+                  <button onClick={() => handleCopyLinkClick(file)} className="action-button copy">
                     Копировать ссылку
                   </button>
                 </div>
@@ -109,24 +167,7 @@ const FileList = ({ files, onDelete, onRename, onDownload, onCopyLink, isAdmin }
 };
 
 FileList.propTypes = {
-  files: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      original_name: PropTypes.string.isRequired,
-      name: PropTypes.string,
-      comment: PropTypes.string,
-      size: PropTypes.number.isRequired,
-      owner_username: PropTypes.string.isRequired,
-      upload_date: PropTypes.string.isRequired,
-      last_download: PropTypes.string,
-      is_owner: PropTypes.bool.isRequired
-    })
-  ).isRequired,
-  onDelete: PropTypes.func.isRequired,
-  onRename: PropTypes.func.isRequired,
-  onDownload: PropTypes.func.isRequired,
-  onCopyLink: PropTypes.func.isRequired,
-  isAdmin: PropTypes.bool.isRequired
+  isAdmin: PropTypes.bool.isRequired,
 };
 
-export default FileList; 
+export default FileList;

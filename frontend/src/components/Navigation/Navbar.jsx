@@ -1,72 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { logoutUser } from '../../features/auth/authSlice';
 import './Navbar.css';
+import { createSelector } from '@reduxjs/toolkit'; // Для оптимизации селектора
 
-const API_URL = `${import.meta.env.VITE_SERVER_URL}/api`;
+// Оптимизированный селектор для получения данных пользователя
+const selectAuthState = (state) => state.auth;
+const selectUserData = createSelector(
+  [selectAuthState],
+  (auth) => auth.user
+);
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [username, setUsername] = useState('');
+  const dispatch = useDispatch();
 
-  const checkAuth = async () => {
-    try {
-      const response = await fetch(`${API_URL}/profile/`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+  const user = useSelector(selectUserData);
+  const isAuthenticated = !!user;
+  const isAdmin = user?.is_admin || false;
+  const username = isAuthenticated ? user.username : '';
 
-      if (response.ok) {
-        const userData = await response.json();
-        setIsAuthenticated(true);
-        setIsAdmin(userData.is_admin);
-        setUsername(userData.username);
-      } else {
-        setIsAuthenticated(false);
-        setIsAdmin(false);
-        setUsername('');
-      }
-    } catch (error) {
-      console.error('Ошибка при проверке аутентификации:', error);
-      setIsAuthenticated(false);
-      setIsAdmin(false);
-      setUsername('');
-    }
-  };
-
-  // Проверяем авторизацию при первом рендеринге и изменении маршрута
-  useEffect(() => {
-    checkAuth();
-  }, [location.pathname]);
-
-  const handleLogout = async () => {
-    try {
-      const csrfToken = document.cookie.split('; ')
-        .find(row => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-
-      const response = await fetch(`${API_URL}/logout/`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        }
-      });
-
-      if (response.ok) {
-        setIsAuthenticated(false);
-        setIsAdmin(false);
-        setUsername('');
-        navigate('/login');
-      }
-    } catch (error) {
-      console.error('Ошибка при выходе:', error);
-    }
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    navigate('/login');
   };
 
   return (
@@ -95,4 +52,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar; 
+export default Navbar;

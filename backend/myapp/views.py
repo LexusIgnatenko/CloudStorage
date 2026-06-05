@@ -261,7 +261,7 @@ class FileDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class FileDownloadView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin] 
 
     def get_object(self, pk):
         return get_object_or_404(FileStorage, pk=pk)
@@ -299,16 +299,15 @@ class FileShareView(APIView):
     def get(self, request, pk):
         try:
             file_storage = self.get_object(pk)
+
             if not file_storage.share_link:
                 file_storage.share_link = uuid.uuid4()
                 file_storage.share_link_expiry = timezone.now() + timedelta(days=7)
                 file_storage.save()
             
             share_link = str(file_storage.share_link)
-            return Response(
-                {'share_link': share_link},
-                content_type='application/json'
-            )
+            return Response({'share_link': share_link})
+        
         except Http404 as e:
             return Response(
                 {'error': str(e)},
@@ -321,7 +320,6 @@ class FileShareView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content_type='application/json'
             )
-
 
 class FileRenameView(APIView):
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
@@ -371,4 +369,4 @@ class SharedFileView(APIView):
         except ValueError as e:
             return Response({'error': 'Неверный формат ссылки'}, status=400)
         except Exception as e:
-            return Response({'error': str(e)}, status=500) 
+            return Response({'error': str(e)}, status=500)       

@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
+import { setFormField, updateAppError, setLoading } from "../features/auth/authSlice";
 import './Register.css';
 import './auth.css';
 
@@ -41,64 +43,63 @@ const validateEmail = (value) => {
 };
 
 const Register = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    password_confirm: ""
-  });
-  const [error, setError] = useState({});
-  const [loading, setLoading] = useState(false);
+
+  // Извлекаем состояние из Redux
+  // const { formData, errors, loading } = useSelector((state) => state.auth);
+  const authState = useSelector((state) => state.auth);
+  const formData = authState.formData ?? {};
+  const errors = authState.errors ?? {};
+  const loading = authState.loading;
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    dispatch(setFormField({ name, value }));
 
+    let validationError = null;
     switch (name) {
       case 'username':
-        setError((prev) => ({ ...prev, username: validateUsername(value) }));
+        validationError = validateUsername(value);
         break;
       case 'email':
-        setError((prev) => ({ ...prev, email: validateEmail(value) }));
+        validationError = validateEmail(value);
         break;
       case 'password':
-        setError((prev) => ({ ...prev, password: validatePassword(value) }));
+        validationError = validatePassword(value);
         break;
       case 'password_confirm':
-        if (value !== formData.password) {
-          setError((prev) => ({ ...prev, password_confirm: "Пароли не совпадают." }));
-        } else {
-          setError((prev) => ({ ...prev, password_confirm: "" }));
-        }
+        validationError = value !== formData.password ? "Пароли не совпадают." : null;
         break;
       default:
         break;
+    }
+    if (validationError !== null) {
+      dispatch(updateAppError({ field: name, message: validationError }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Финальная валидация перед отправкой
     const usernameErr = validateUsername(formData.username);
     const emailErr = validateEmail(formData.email);
     const passwordErr = validatePassword(formData.password);
     const passConfirmErr = formData.password !== formData.password_confirm ?
       "Пароли не совпадают." :
-      "";
+      null;
 
     if (usernameErr || emailErr || passwordErr || passConfirmErr) {
-      setError({
-        username: usernameErr,
-        email: emailErr,
-        password: passwordErr,
-        password_confirm: passConfirmErr
-      });
+      dispatch(updateAppError({ field: 'username', message: usernameErr }));
+      dispatch(updateAppError({ field: 'email', message: emailErr }));
+      dispatch(updateAppError({ field: 'password', message: passwordErr }));
+      dispatch(updateAppError({ field: 'password_confirm', message: passConfirmErr }));
       return;
     }
 
-    setError({});
-    setLoading(true);
+    dispatch(setLoading(true));
 
     try {
       // Сначала получаем CSRF-токен, делая GET-запрос
@@ -130,36 +131,35 @@ const Register = () => {
       const data = await response.json();
 
       if (response.ok) {
+        dispatch(resetForm()); // Сброс формы после успешной регистрации
         navigate('/login');
       } else {
-        if (typeof data === 'object') {
-          // Обработка ошибок в формате {field: [error_message]}
-          const newErrors = {};
-          for (const [key, value] of Object.entries(data)) {
-            if (Array.isArray(value)) {
-              newErrors[key] = value[0];
-            } else {
-              newErrors[key] = value;
-            }
-          }
-          setError(newErrors);
-        } else {
-          setError({ general: data.error || 'Произошла ошибка при регистрации' });
+        // Обработка ошибок от сервера
+        if (data && typeof data === 'object') {
+          // Сначала очищаем все ошибки, которые могли остаться от валидации
+          ['username', 'email', 'password', 'password_confirm'].forEach(field =>
+            dispatch(updateAppError({ field, message: null }))
+          );
+          // Устанавливаем новые ошибки, полученные от сервера
+          Object.keys(data).forEach(key => {
+            const msg = Array.isArray(data[key]) ? data[key][0] : data[key];
+            dispatch(updateAppError({ field: key, message: msg }));
+          });
         }
       }
     } catch (error) {
-      setError({ general: 'Произошла ошибка при подключении к серверу: ' + error.message });
+      dispatch(updateAppError({ field: 'general', message: `Произошла ошибка при подключении к серверу: ${error.message}` }));
     } finally {
-      setLoading(false);
+      dispatch(setLoading(false));
     }
   };
 
   return (
     <div className="register-container">
       <h2>Регистрация</h2>
-      {error.general && (
+      {errors?.general && (
         <div className="error-message general-error">
-          {error.general}
+          {errors.general}
         </div>
       )}
       <form onSubmit={handleSubmit}>
@@ -171,11 +171,11 @@ const Register = () => {
             name="username"
             value={formData.username}
             onChange={handleChange}
-            className={error.username ? "error-input" : ""}
+            className={errors.username ? "error-input" : ""}
             required
           />
-          {error.username && (
-            <div className="error-message">{error.username}</div>
+          {errors.username && (
+            <div className="error-message">{errors.username}</div>
           )}
         </div>
         <div className="form-group">
@@ -186,11 +186,11 @@ const Register = () => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className={error.email ? "error-input" : ""}
+            className={errors.email ? "error-input" : ""}
             required
           />
-          {error.email && (
-            <div className="error-message">{error.email}</div>
+          {errors.email && (
+            <div className="error-message">{errors.email}</div>
           )}
         </div>
         <div className="form-group">
@@ -201,11 +201,11 @@ const Register = () => {
             name="password"
             value={formData.password}
             onChange={handleChange}
-            className={error.password ? "error-input" : ""}
+            className={errors.password ? "error-input" : ""}
             required
           />
-          {error.password && (
-            <div className="error-message">{error.password}</div>
+          {errors.password && (
+            <div className="error-message">{errors.password}</div>
           )}
         </div>
         <div className="form-group">
@@ -216,11 +216,11 @@ const Register = () => {
             name="password_confirm"
             value={formData.password_confirm}
             onChange={handleChange}
-            className={error.password_confirm ? "error-input" : ""}
+            className={errors.password_confirm ? "error-input" : ""}
             required
           />
-          {error.password_confirm && (
-            <div className="error-message">{error.password_confirm}</div>
+          {errors.password_confirm && (
+            <div className="error-message">{errors.password_confirm}</div>
           )}
         </div>
         <button type="submit" disabled={loading}>

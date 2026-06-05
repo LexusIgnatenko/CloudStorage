@@ -2,16 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import './Login.css';
 import './auth.css';
-import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { checkAuth } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
-  const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
+  const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
   const [csrfToken, setCsrfToken] = useState('');
 
@@ -68,16 +67,10 @@ const Login = () => {
     // Проверка валидатора для соответствующего поля
     switch (name) {
       case 'username':
-        setError((prev) => ({
-          ...prev,
-          username: validateUsername(value)
-        }));
+        setValidationErrors(prev => ({ ...prev, username: validateUsername(value) }));
         break;
       case 'password':
-        setError((prev) => ({
-          ...prev,
-          password: validatePassword(value)
-        }));
+        setValidationErrors(prev => ({ ...prev, password: validatePassword(value) }));
         break;
       default:
         break;
@@ -87,12 +80,13 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setValidationErrors({});
+    setServerError('');
     setLoading(true);
 
     try {
       // Получаем актуальный CSRF-токен из кук
-      const currentToken = getCookie('csrftoken') || csrfToken;
+      const currentToken = getCookie('csrftoken');
       
       if (!currentToken) {
         throw new Error('CSRF-токен не найден. Пожалуйста, обновите страницу.');
@@ -110,21 +104,20 @@ const Login = () => {
         body: JSON.stringify(formData)
       });
 
-      if (response.status === 403) {
-        throw new Error('Ошибка авторизации: отказано в доступе (403). Возможно, проблема с CSRF-токеном.');
-      }
+      // if (response.status === 403) {
+      //   throw new Error('Ошибка авторизации: отказано в доступе (403). Возможно, проблема с CSRF-токеном.');
+      // }
 
       const data = await response.json();
 
       if (response.ok) {
-        await checkAuth();
         navigate('/dashboard');
       } else {
-        setError(data.error || 'Произошла ошибка при входе');
+        setServerError(data.error || 'Произошла ошибка при входе');
       }
     } catch (error) {
       console.error('Ошибка при входе:', error);
-      setError(error.message || 'Произошла ошибка при подключении к серверу');
+      setServerError(error.message || 'Произошла ошибка при подключении к серверу');
     } finally {
       setLoading(false);
     }
@@ -141,9 +134,9 @@ const Login = () => {
   return (
     <div className="login-container">
       <h2>Вход в систему</h2>
-      {error && (
+      {serverError && (
         <div className="error-message general-error">
-          {error}
+          {serverError}
         </div>
       )}
       <form onSubmit={handleSubmit}>
@@ -155,11 +148,11 @@ const Login = () => {
             name="username"
             value={formData.username}
             onChange={handleChange}
-            className={error.username ? "error-input" : ""}
+            className={validationErrors.username ? "error-input" : ""}
             required
           />
-          {error.username && (
-            <div className="error-message">{error.username}</div>
+          {validationErrors.username && (
+            <div className="error-message">{validationErrors.username}</div>
           )}
         </div>
         <div className="form-group">
@@ -170,11 +163,11 @@ const Login = () => {
             name="password"
             value={formData.password}
             onChange={handleChange}
-            className={error.password ? "error-input" : ""}
+            className={validationErrors.password ? "error-input" : ""}
             required
           />
-          {error.password && (
-            <div className="error-message">{error.password}</div>
+          {validationErrors.password && (
+            <div className="error-message">{validationErrors.password}</div>
           )}
         </div>
         <button type="submit" disabled={loading}>
