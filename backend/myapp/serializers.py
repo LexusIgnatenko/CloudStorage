@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import CustomUser, FileStorage
-from .validators import validate_password
+from django.contrib.auth.password_validation import validate_password
+from django.db.models import Sum
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -56,7 +57,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
 
     class Meta:
@@ -115,8 +116,9 @@ class AdminUserSerializer(serializers.ModelSerializer):
         return FileStorage.objects.filter(owner=obj).count()
 
     def get_total_storage(self, obj):
-        return sum(file.size for file in FileStorage.objects.filter(owner=obj))
-
+    # Выполняет SUM(size) прямо в базе данных одним запросом
+        total = FileStorage.objects.filter(owner=obj).aggregate(total_size=Sum('size'))
+        return total['total_size'] or 0 # Возвращаем 0, если файлов нет
 
 class FileStorageUploadSerializer(serializers.ModelSerializer):
     file = serializers.FileField()

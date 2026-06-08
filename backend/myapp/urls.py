@@ -7,7 +7,7 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r'users', AdminUserViewSet, basename='admin-user')
+router.register(r'api/admin-users', AdminUserViewSet, basename='admin-user') 
 
 urlpatterns = [
     # Аутентификация

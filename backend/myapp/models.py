@@ -4,6 +4,7 @@ from .validators import validate_username, validate_email
 import uuid
 from django.utils import timezone
 import os
+from django.db.models import Count, Sum
 
 
 # Расширение встроенной модели User
@@ -25,12 +26,15 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
     # Получаем информацию о хранилище пользователя
+
     def get_storage_info(self):
-        files = self.files.all()
-        return {
-            'file_count': files.count(),
-            'total_size': sum(file.size for file in files),
-        }
+    # Делаем всё одним запросом к БД!
+        info = self.files.aggregate(
+            file_count=Count('id'),
+            total_size=Sum('size')
+        )
+        return info
+    
 
     def save(self, *args, **kwargs):
         if not self.storage_path:
@@ -59,16 +63,15 @@ class FileStorage(models.Model):
         return f"{self.original_name} ({self.owner.username})"
 
     def save(self, *args, **kwargs):
-        if not self.share_link:
+    # Генерируем share_link только если объект новый (это стандартное поведение)
+        if self._state.adding:
             self.share_link = uuid.uuid4()
-        if not self.share_link_expiry:
             self.share_link_expiry = timezone.now() + timezone.timedelta(days=7)
-        
-        # Генерируем уникальное имя файла только если оно еще не установлено
-        if not self.name and self.file:
+
+    # Генерируем уникальное имя файла, если его нет ИЛИ если файл был изменен
+        if self.file and (not self.name or self._state.adding):
             file_ext = os.path.splitext(self.file.name)[1]
-            self.name = f"{self.id}{file_ext}"
-            # Сохраняем оригинальное имя файла
+            self.name = f"{self.id or uuid.uuid4()}{file_ext}"
             self.original_name = self.file.name
         
         super().save(*args, **kwargs)
@@ -79,9 +82,15 @@ class FileStorage(models.Model):
 
     def get_file_path(self):
         return os.path.join(self.owner.storage_path, self.name)
-
+    
     def delete(self, *args, **kwargs):
-        if self.file:
-            if os.path.isfile(self.file.path):
-                os.remove(self.file.path)
-        super().delete(*args, **kwargs) 
+        file_to_delete = self.file
+    
+    # Сначала удаляем запись из базы данных
+        super().delete(*args, **kwargs)
+    # Затем удаляем сам файл. Метод .delete() обработает всё правильно,
+    # независимо от того, где хранится файл (локально или в облаке).
+        if file_to_delete:
+            file_to_delete.delete(save=False)
+
+    

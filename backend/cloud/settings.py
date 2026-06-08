@@ -162,22 +162,7 @@ TEMPLATES = [
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.postgresql_psycopg2',
-    #     'NAME': 'cloudstorage',
-    #     'USER': 'new_user_name',
-    #     'PASSWORD': 'new_password',
-    #     'HOST': 'localhost',
-    #     'PORT': '',
-    # },
-    #  'default': {
-    #     'ENGINE': 'django.db.backends.postgresql',
-    #     'NAME': 'cloudstorage',
-    #     'USER': 'lexus',
-    #     'PASSWORD': 'Leschiy885',
-    #     'HOST': 'localhost',
-    #     'PORT': '5432',
-    # },
+    
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME':  os.getenv('DB_NAME'),

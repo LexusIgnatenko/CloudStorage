@@ -1,3 +1,4 @@
+import traceback
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
@@ -105,11 +106,12 @@ class LoginView(APIView):
             return Response({
                 'error': 'Неверное имя пользователя или пароль'
             }, status=status.HTTP_401_UNAUTHORIZED)
-        except Exception as e:
-            logger.error(f"Ошибка при авторизации: {str(e)}")
-            return Response({
-                'error': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            logger.error(traceback.format_exc())
+            return Response(
+                {'error': 'Произошла внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 @api_view(['POST'])
@@ -118,10 +120,13 @@ class LoginView(APIView):
 def logout_view(request):
     try:
         logout(request)
-        return Response({'message': 'Успешный выход из системы'})
-    except Exception as e:
-        logger.info(f"Успешный выход из системы: {str(e)}")
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'message': 'Выход выполнен успешно'})
+    except Exception:
+        logger.error(traceback.format_exc())
+        return Response(
+            {'error': 'Произошла ошибка при выходе из системы'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 class IsAdminUser(BasePermission):
@@ -140,10 +145,10 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             queryset = self.filter_queryset(self.get_queryset())
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
-        except Exception as e:
-            logger.error(f"Ошибка при получении списка пользователей: {str(e)}")
+        except Exception:
+            logger.error(traceback.format_exc())
             return Response(
-                {'error': f'Ошибка при получении списка пользователей: {str(e)}'},
+                {'error': 'Ошибка при получении списка пользователей'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -152,10 +157,10 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             user = self.get_object()
             serializer = self.get_serializer(user)
             return Response(serializer.data)
-        except Exception as e:
-            logger.error(f"Ошибка при получении пользователя {pk}: {str(e)}")
+        except Exception:
+            logger.error(traceback.format_exc())
             return Response(
-                {'error': f'Ошибка при получении пользователя: {str(e)}'},
+                {'error':'Ошибка при получении пользователя'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -166,10 +171,10 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             user.is_admin = not user.is_admin
             user.save()
             return Response({'status': 'success', 'is_admin': user.is_admin})
-        except Exception as e:
-            logger.error(f"Ошибка при изменении прав администратора для пользователя {pk}: {str(e)}")
+        except Exception:
+            logger.error(traceback.format_exc())
             return Response(
-                {'error': f'Ошибка при изменении прав администратора: {str(e)}'},
+                {'error':'Ошибка при изменении прав администратора'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -178,10 +183,10 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         try:
             user = self.get_object()
             return Response(user.get_storage_info())
-        except Exception as e:
-            logger.error(f"Ошибка при получении информации о хранилище пользователя {pk}: {str(e)}")
+        except Exception:
+            logger.error(traceback.format_exc())
             return Response(
-                {'error': f'Ошибка при получении информации о хранилище: {str(e)}'},
+                {'error': 'Ошибка при получении информации о хранилище пользователя'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -237,9 +242,10 @@ class FileUploadView(APIView):
 
             serializer = FileStorageSerializer(file_storage, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as e:
+        except Exception:
+            logger.error(traceback.format_exc())
             return Response(
-                {'error': str(e)}, 
+                {'error': 'Ошибка при загрузке файла'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -277,15 +283,14 @@ class FileDownloadView(APIView):
         full_path = file_storage.file.path
         content_type, _ = mimetypes.guess_type(full_path)
         
-        if is_preview:
-            # Вернуть файл для просмотра в браузере
-            return FileResponse(open(full_path, 'rb'), content_type=content_type)
-        else:
-            # Вернуть файл для скачивания
-            response = FileResponse(open(full_path, 'rb'), content_type=content_type)
-            response['Content-Disposition'] = f'attachment; filename="{file_storage.original_name}"'
-            return response
-
+        with open(full_path, 'rb') as file:
+            if is_preview:
+                return FileResponse(file, content_type=content_type)
+            else:
+                response = FileResponse(file, content_type=content_type)
+                response['Content-Disposition'] = f'attachment; filename="{file_storage.original_name}"'
+                return response
+        
 class FileShareView(APIView):
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
     renderer_classes = [JSONRenderer]  # Явно указываем, что возвращаем только JSON
@@ -314,9 +319,9 @@ class FileShareView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
                 content_type='application/json'
             )
-        except Exception as e:
+        except Exception:
             return Response(
-                {'error': str(e)},
+                {'error': 'Ошибка при генерации ссылки'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content_type='application/json'
             )
